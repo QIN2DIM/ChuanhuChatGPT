@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import os
 import logging
 import sys
-import json
+import commentjson as json
 
 from . import shared
 
@@ -127,7 +127,7 @@ def retrieve_proxy(proxy=None):
         os.environ["HTTP_PROXY"] = http_proxy
         os.environ["HTTPS_PROXY"] = https_proxy
         yield http_proxy, https_proxy # return new proxy
-        
+
         # return old proxy
         os.environ["HTTP_PROXY"], os.environ["HTTPS_PROXY"] = old_var
 
@@ -139,5 +139,5 @@ def update_doc_config(two_column_pdf):
     global advance_docs
     if two_column_pdf:
         advance_docs["pdf"]["two_column"] = True
-    
+
     logging.info(f"更新后的文件参数为：{advance_docs}")
