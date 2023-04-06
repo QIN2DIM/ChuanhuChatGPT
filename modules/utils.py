@@ -1,31 +1,30 @@
 # -*- coding:utf-8 -*-
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Type
-import logging
-import json
-import os
-import datetime
-import hashlib
-import csv
-import requests
-import re
-import html
-import sys
-import subprocess
 
-import gradio as gr
-from pypinyin import lazy_pinyin
-import tiktoken
+import csv
+import datetime
+import html
+import json
+import logging
+import os
+import re
+import subprocess
+import sys
+from typing import List, TYPE_CHECKING
+
 import mdtex2html
+import pandas as pd
+import requests
+import tiktoken
 from markdown import markdown
 from pygments import highlight
-from pygments.lexers import get_lexer_by_name
 from pygments.formatters import HtmlFormatter
-import pandas as pd
+from pygments.lexers import get_lexer_by_name
+from pypinyin import lazy_pinyin
 
+from modules.config import retrieve_proxy
 from modules.presets import *
 from . import shared
-from modules.config import retrieve_proxy
 
 if TYPE_CHECKING:
     from typing import TypedDict
@@ -76,9 +75,7 @@ def normalize_markdown(md_text: str) -> str:
             inside_list = True
             normalized_lines.append(line)
         elif inside_list and line.strip() == "":
-            if i < len(lines) - 1 and not re.match(
-                r"^(\d+\.|-|\*|\+)\s", lines[i + 1].strip()
-            ):
+            if i < len(lines) - 1 and not re.match(r"^(\d+\.|-|\*|\+)\s", lines[i + 1].strip()):
                 normalized_lines.append(line)
             continue
         else:
@@ -114,10 +111,7 @@ def convert_mdtext(md_text):
 
 
 def convert_asis(userinput):
-    return (
-        f'<p style="white-space:pre-wrap;">{html.escape(userinput)}</p>'
-        + ALREADY_CONVERTED_MARK
-    )
+    return f'<p style="white-space:pre-wrap;">{html.escape(userinput)}</p>' + ALREADY_CONVERTED_MARK
 
 
 def detect_converted_mark(userinput):
@@ -164,11 +158,7 @@ def delete_first_conversation(history, previous_token_count):
     if history:
         del history[:2]
         del previous_token_count[0]
-    return (
-        history,
-        previous_token_count,
-        construct_token_message(previous_token_count),
-    )
+    return (history, previous_token_count, construct_token_message(previous_token_count))
 
 
 def delete_last_conversation(chatbot, history, previous_token_count):
@@ -186,12 +176,7 @@ def delete_last_conversation(chatbot, history, previous_token_count):
     if len(previous_token_count) > 0:
         logging.info("删除了一组对话的token计数记录")
         previous_token_count.pop()
-    return (
-        chatbot,
-        history,
-        previous_token_count,
-        construct_token_message(previous_token_count),
-    )
+    return (chatbot, history, previous_token_count, construct_token_message(previous_token_count))
 
 
 def save_file(filename, system, history, chatbot, user_name):
@@ -292,9 +277,7 @@ def load_template(filename, mode=0):
             lines = json.load(f)
         lines = [[i["act"], i["prompt"]] for i in lines]
     else:
-        with open(
-            os.path.join(TEMPLATES_DIR, filename), "r", encoding="utf8"
-        ) as csvfile:
+        with open(os.path.join(TEMPLATES_DIR, filename), "r", encoding="utf8") as csvfile:
             reader = csv.reader(csvfile)
             lines = list(reader)
         lines = lines[1:]
@@ -304,9 +287,7 @@ def load_template(filename, mode=0):
         return {row[0]: row[1] for row in lines}
     else:
         choices = sorted_by_pinyin([row[0] for row in lines])
-        return {row[0]: row[1] for row in lines}, gr.Dropdown.update(
-            choices=choices
-        )
+        return {row[0]: row[1] for row in lines}, gr.Dropdown.update(choices=choices)
 
 
 def get_template_names(plain=False):
@@ -387,9 +368,7 @@ def get_geoip():
     if "error" in data.keys():
         logging.warning(f"无法获取IP地址信息。\n{data}")
         if data["reason"] == "RateLimited":
-            return (
-                f"获取IP地理位置失败，因为达到了检测IP的速率限制。聊天功能可能仍然可用。"
-            )
+            return f"获取IP地理位置失败，因为达到了检测IP的速率限制。聊天功能可能仍然可用。"
         else:
             return f"获取IP地理位置失败。原因：{data['reason']}。你仍然可以使用聊天功能。"
     else:
@@ -422,10 +401,7 @@ def start_outputing():
 
 
 def end_outputing():
-    return (
-        gr.Button.update(visible=True),
-        gr.Button.update(visible=False),
-    )
+    return (gr.Button.update(visible=True), gr.Button.update(visible=False))
 
 
 def cancel_outputing():
@@ -445,31 +421,41 @@ def transfer_input(inputs):
     )
 
 
-
 def run(command, desc=None, errdesc=None, custom_env=None, live=False):
     if desc is not None:
         print(desc)
     if live:
-        result = subprocess.run(command, shell=True, env=os.environ if custom_env is None else custom_env)
+        result = subprocess.run(
+            command, shell=True, env=os.environ if custom_env is None else custom_env
+        )
         if result.returncode != 0:
-            raise RuntimeError(f"""{errdesc or 'Error running command'}.
+            raise RuntimeError(
+                f"""{errdesc or 'Error running command'}.
 Command: {command}
-Error code: {result.returncode}""")
+Error code: {result.returncode}"""
+            )
 
         return ""
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=os.environ if custom_env is None else custom_env)
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+        env=os.environ if custom_env is None else custom_env,
+    )
     if result.returncode != 0:
         message = f"""{errdesc or 'Error running command'}.
 Command: {command}
 Error code: {result.returncode}
-stdout: {result.stdout.decode(encoding="utf8", errors="ignore") if len(result.stdout)>0 else '<empty>'}
-stderr: {result.stderr.decode(encoding="utf8", errors="ignore") if len(result.stderr)>0 else '<empty>'}
+stdout: {result.stdout.decode(encoding="utf8", errors="ignore") if len(result.stdout) > 0 else '<empty>'}
+stderr: {result.stderr.decode(encoding="utf8", errors="ignore") if len(result.stderr) > 0 else '<empty>'}
 """
         raise RuntimeError(message)
     return result.stdout.decode(encoding="utf8", errors="ignore")
 
+
 def versions_html():
-    git = os.environ.get('GIT', "git")
+    git = os.environ.get("GIT", "git")
     python_version = ".".join([str(x) for x in sys.version_info[0:3]])
     try:
         commit_hash = run(f"{git} rev-parse HEAD").strip()
@@ -477,7 +463,7 @@ def versions_html():
         commit_hash = "<none>"
     if commit_hash != "<none>":
         short_commit = commit_hash[0:7]
-        commit_info = f"<a style=\"text-decoration:none\" href=\"https://github.com/GaiZhenbiao/ChuanhuChatGPT/commit/{short_commit}\">{short_commit}</a>"
+        commit_info = f'<a style="text-decoration:none" href="https://github.com/GaiZhenbiao/ChuanhuChatGPT/commit/{short_commit}">{short_commit}</a>'
     else:
         commit_info = "unknown \U0001F615"
     return f"""
@@ -488,23 +474,25 @@ Gradio: {gr.__version__}
 Commit: {commit_info}
 """
 
-def add_source_numbers(lst, source_name = "Source", use_source = True):
+
+def add_source_numbers(lst, source_name="Source", use_source=True):
     if use_source:
-        return [f'[{idx+1}]\t "{item[0]}"\n{source_name}: {item[1]}' for idx, item in enumerate(lst)]
+        return [
+            f'[{idx + 1}]\t "{item[0]}"\n{source_name}: {item[1]}' for idx, item in enumerate(lst)
+        ]
     else:
-        return [f'[{idx+1}]\t "{item}"' for idx, item in enumerate(lst)]
+        return [f'[{idx + 1}]\t "{item}"' for idx, item in enumerate(lst)]
+
 
 def add_details(lst):
     nodes = []
     for index, txt in enumerate(lst):
         brief = txt[:25].replace("\n", "")
-        nodes.append(
-            f"<details><summary>{brief}...</summary><p>{txt}</p></details>"
-        )
+        nodes.append(f"<details><summary>{brief}...</summary><p>{txt}</p></details>")
     return nodes
 
 
-def sheet_to_string(sheet, sheet_name = None):
+def sheet_to_string(sheet, sheet_name=None):
     result = []
     for index, row in sheet.iterrows():
         row_string = ""
@@ -515,18 +503,17 @@ def sheet_to_string(sheet, sheet_name = None):
         result.append(row_string)
     return result
 
+
 def excel_to_string(file_path):
     # 读取Excel文件中的所有工作表
-    excel_file = pd.read_excel(file_path, engine='openpyxl', sheet_name=None)
+    excel_file = pd.read_excel(file_path, engine="openpyxl", sheet_name=None)
 
     # 初始化结果字符串
     result = []
 
     # 遍历每一个工作表
     for sheet_name, sheet_data in excel_file.items():
-
         # 处理当前工作表并添加到结果字符串
         result += sheet_to_string(sheet_data, sheet_name=sheet_name)
-
 
     return result

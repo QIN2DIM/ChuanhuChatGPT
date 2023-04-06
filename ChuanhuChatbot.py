@@ -1,17 +1,10 @@
 # -*- coding:utf-8 -*-
-import os
-import logging
-import sys
-
-import gradio as gr
 
 from modules import config
-from modules.config import *
-from modules.utils import *
-from modules.presets import *
-from modules.overwrites import *
 from modules.chat_func import *
+from modules.config import *
 from modules.openai_func import get_usage
+from modules.overwrites import *
 
 gr.Chatbot.postprocess = postprocess
 PromptHelper.compact_text_chunks = compact_text_chunks
@@ -37,11 +30,12 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
 
         # https://github.com/gradio-app/gradio/pull/3296
         def create_greeting(request: gr.Request):
-            if hasattr(request, "username") and request.username: # is not None or is not ""
+            if hasattr(request, "username") and request.username:  # is not None or is not ""
                 logging.info(f"Get User Name: {request.username}")
                 return gr.Markdown.update(value=f"User: {request.username}"), request.username
             else:
                 return gr.Markdown.update(value=f"User: default", visible=False), ""
+
         demo.load(create_greeting, inputs=None, outputs=[user_info, user_name])
 
     with gr.Row().style(equal_height=True):
@@ -51,16 +45,15 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             with gr.Row():
                 with gr.Column(min_width=225, scale=12):
                     user_input = gr.Textbox(
-                        elem_id="user_input_tb",
-                        show_label=False, placeholder="在这里输入"
+                        elem_id="user_input_tb", show_label=False, placeholder="在这里输入"
                     ).style(container=False)
                 with gr.Column(min_width=42, scale=1):
                     submitBtn = gr.Button(value="", variant="primary", elem_id="submit_btn")
-                    cancelBtn = gr.Button(value="", variant="secondary", visible=False, elem_id="cancel_btn")
+                    cancelBtn = gr.Button(
+                        value="", variant="secondary", visible=False, elem_id="cancel_btn"
+                    )
             with gr.Row():
-                emptyBtn = gr.Button(
-                    "🧹 新的对话",
-                )
+                emptyBtn = gr.Button("🧹 新的对话")
                 retryBtn = gr.Button("🔄 重新生成")
                 delFirstBtn = gr.Button("🗑️ 删除最旧对话")
                 delLastBtn = gr.Button("🗑️ 删除最新对话")
@@ -80,7 +73,9 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                     if multi_api_key:
                         usageTxt = gr.Markdown("多账号模式已开启，无需输入key，可直接开始对话", elem_id="usage_display")
                     else:
-                        usageTxt = gr.Markdown("**发送消息** 或 **提交key** 以显示额度", elem_id="usage_display")
+                        usageTxt = gr.Markdown(
+                            "**发送消息** 或 **提交key** 以显示额度", elem_id="usage_display"
+                        )
                     model_select_dropdown = gr.Dropdown(
                         label="选择模型", choices=MODELS, multiselect=False, value=MODELS[0]
                     )
@@ -95,7 +90,9 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                         value=REPLY_LANGUAGES[0],
                     )
                     index_files = gr.Files(label="上传索引文件", type="file", multiple=True)
-                    two_column = gr.Checkbox(label="双栏pdf", value=advance_docs["pdf"].get("two_column", False))
+                    two_column = gr.Checkbox(
+                        label="双栏pdf", value=advance_docs["pdf"].get("two_column", False)
+                    )
                     # TODO: 公式ocr
                     # formula_ocr = gr.Checkbox(label="识别公式", value=advance_docs["pdf"].get("formula_ocr", False))
 
@@ -223,28 +220,23 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
     )
 
     start_outputing_args = dict(
-        fn=start_outputing,
-        inputs=[],
-        outputs=[submitBtn, cancelBtn],
-        show_progress=True,
+        fn=start_outputing, inputs=[], outputs=[submitBtn, cancelBtn], show_progress=True
     )
 
-    end_outputing_args = dict(
-        fn=end_outputing, inputs=[], outputs=[submitBtn, cancelBtn]
-    )
+    end_outputing_args = dict(fn=end_outputing, inputs=[], outputs=[submitBtn, cancelBtn])
 
-    reset_textbox_args = dict(
-        fn=reset_textbox, inputs=[], outputs=[user_input]
-    )
+    reset_textbox_args = dict(fn=reset_textbox, inputs=[], outputs=[user_input])
 
     transfer_input_args = dict(
-        fn=transfer_input, inputs=[user_input], outputs=[user_question, user_input, submitBtn, cancelBtn], show_progress=True
+        fn=transfer_input,
+        inputs=[user_input],
+        outputs=[user_question, user_input, submitBtn, cancelBtn],
+        show_progress=True,
     )
 
     get_usage_args = dict(
         fn=get_usage, inputs=[user_api_key], outputs=[usageTxt], show_progress=False
     )
-
 
     # Chatbot
     cancelBtn.click(cancel_outputing, [], [])
@@ -256,9 +248,7 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
     submitBtn.click(**get_usage_args)
 
     emptyBtn.click(
-        reset_state,
-        outputs=[chatbot, history, token_count, status_display],
-        show_progress=True,
+        reset_state, outputs=[chatbot, history, token_count, status_display], show_progress=True
     )
     emptyBtn.click(**reset_textbox_args)
 
@@ -282,9 +272,7 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
     retryBtn.click(**get_usage_args)
 
     delFirstBtn.click(
-        delete_first_conversation,
-        [history, token_count],
-        [history, token_count, status_display],
+        delete_first_conversation, [history, token_count], [history, token_count, status_display]
     )
 
     delLastBtn.click(
@@ -341,14 +329,18 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
         downloadFile,
         show_progress=True,
     )
-    saveHistoryBtn.click(get_history_names, [gr.State(False), user_name], [historyFileSelectDropdown])
+    saveHistoryBtn.click(
+        get_history_names, [gr.State(False), user_name], [historyFileSelectDropdown]
+    )
     exportMarkdownBtn.click(
         export_markdown,
         [saveFileName, systemPromptTxt, history, chatbot, user_name],
         downloadFile,
         show_progress=True,
     )
-    historyRefreshBtn.click(get_history_names, [gr.State(False), user_name], [historyFileSelectDropdown])
+    historyRefreshBtn.click(
+        get_history_names, [gr.State(False), user_name], [historyFileSelectDropdown]
+    )
     historyFileSelectDropdown.change(
         load_chat_history,
         [historyFileSelectDropdown, systemPromptTxt, history, chatbot, user_name],
@@ -362,26 +354,12 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
     )
 
     # Advanced
-    default_btn.click(
-        reset_default, [], [apihostTxt, proxyTxt, status_display], show_progress=True
-    )
-    changeAPIURLBtn.click(
-        change_api_host,
-        [apihostTxt],
-        [status_display],
-        show_progress=True,
-    )
-    changeProxyBtn.click(
-        change_proxy,
-        [proxyTxt],
-        [status_display],
-        show_progress=True,
-    )
+    default_btn.click(reset_default, [], [apihostTxt, proxyTxt, status_display], show_progress=True)
+    changeAPIURLBtn.click(change_api_host, [apihostTxt], [status_display], show_progress=True)
+    changeProxyBtn.click(change_proxy, [proxyTxt], [status_display], show_progress=True)
 
 logging.info(
-    colorama.Back.GREEN
-    + "\n川虎的温馨提示：访问 http://localhost:7860 查看界面"
-    + colorama.Style.RESET_ALL
+    colorama.Back.GREEN + "\n川虎的温馨提示：访问 http://localhost:7860 查看界面" + colorama.Style.RESET_ALL
 )
 # 默认开启本地服务器，默认可以直接从IP访问，默认不创建公开分享链接
 demo.title = "川虎ChatGPT 🚀"
@@ -408,10 +386,7 @@ if __name__ == "__main__":
     else:
         if authflag:
             demo.queue(concurrency_count=CONCURRENT_COUNT).launch(
-                share=False,
-                auth=auth_list,
-                favicon_path="./assets/favicon.ico",
-                inbrowser=True,
+                share=False, auth=auth_list, favicon_path="./assets/favicon.ico", inbrowser=True
             )
         else:
             demo.queue(concurrency_count=CONCURRENT_COUNT).launch(

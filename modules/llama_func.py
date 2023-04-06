@@ -1,20 +1,10 @@
-import os
-import logging
-
-from llama_index import download_loader
-from llama_index import (
-    Document,
-    LLMPredictor,
-    PromptHelper,
-    QuestionAnswerPrompt,
-    RefinePrompt,
-)
-import colorama
 import PyPDF2
+from llama_index import Document, LLMPredictor, PromptHelper
+from llama_index import download_loader
 from tqdm import tqdm
 
-from modules.presets import *
 from modules.utils import *
+
 
 def get_index_name(file_src):
     file_paths = [x.name for x in file_src]
@@ -28,12 +18,14 @@ def get_index_name(file_src):
 
     return md5_hash.hexdigest()
 
+
 def block_split(text):
     blocks = []
     while len(text) > 0:
         blocks.append(Document(text[:1000]))
         text = text[1000:]
     return blocks
+
 
 def get_documents(file_src):
     documents = []
@@ -49,11 +41,12 @@ def get_documents(file_src):
             try:
                 from modules.pdf_func import parse_pdf
                 from modules.config import advance_docs
+
                 two_column = advance_docs["pdf"].get("two_column", False)
                 pdftext = parse_pdf(filepath, two_column).text
             except:
                 pdftext = ""
-                with open(filepath, 'rb') as pdfFileObj:
+                with open(filepath, "rb") as pdfFileObj:
                     pdfReader = PyPDF2.PdfReader(pdfFileObj)
                     for page in tqdm(pdfReader.pages):
                         pdftext += page.extract_text()
@@ -87,14 +80,14 @@ def get_documents(file_src):
 
 
 def construct_index(
-        api_key,
-        file_src,
-        max_input_size=4096,
-        num_outputs=5,
-        max_chunk_overlap=20,
-        chunk_size_limit=600,
-        embedding_limit=None,
-        separator=" "
+    api_key,
+    file_src,
+    max_input_size=4096,
+    num_outputs=5,
+    max_chunk_overlap=20,
+    chunk_size_limit=600,
+    embedding_limit=None,
+    separator=" ",
 ):
     from langchain.chat_models import ChatOpenAI
     from llama_index import GPTSimpleVectorIndex, ServiceContext
@@ -107,7 +100,14 @@ def construct_index(
     llm_predictor = LLMPredictor(
         llm=ChatOpenAI(model_name="gpt-3.5-turbo-0301", openai_api_key=api_key)
     )
-    prompt_helper = PromptHelper(max_input_size = max_input_size, num_output = num_outputs, max_chunk_overlap = max_chunk_overlap, embedding_limit=embedding_limit, chunk_size_limit=600, separator=separator)
+    prompt_helper = PromptHelper(
+        max_input_size=max_input_size,
+        num_output=num_outputs,
+        max_chunk_overlap=max_chunk_overlap,
+        embedding_limit=embedding_limit,
+        chunk_size_limit=600,
+        separator=separator,
+    )
     index_name = get_index_name(file_src)
     if os.path.exists(f"./index/{index_name}.json"):
         logging.info("找到了缓存的索引文件，加载中……")
@@ -117,9 +117,13 @@ def construct_index(
             documents = get_documents(file_src)
             logging.info("构建索引中……")
             with retrieve_proxy():
-                service_context = ServiceContext.from_defaults(llm_predictor=llm_predictor, prompt_helper=prompt_helper, chunk_size_limit=chunk_size_limit)
+                service_context = ServiceContext.from_defaults(
+                    llm_predictor=llm_predictor,
+                    prompt_helper=prompt_helper,
+                    chunk_size_limit=chunk_size_limit,
+                )
                 index = GPTSimpleVectorIndex.from_documents(
-                    documents,  service_context=service_context
+                    documents, service_context=service_context
                 )
             logging.debug("索引构建完成！")
             os.makedirs("./index", exist_ok=True)

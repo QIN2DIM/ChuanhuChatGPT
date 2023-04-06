@@ -1,6 +1,8 @@
-from modules.presets import COMPLETION_URL, BALANCE_API_URL, USAGE_API_URL, API_HOST
 import os
 import queue
+
+from modules.presets import API_HOST, BALANCE_API_URL, COMPLETION_URL, USAGE_API_URL
+
 
 class State:
     interrupted = False
@@ -31,7 +33,7 @@ class State:
     def reset_all(self):
         self.interrupted = False
         self.completion_url = COMPLETION_URL
-    
+
     def set_api_key_queue(self, api_key_list):
         self.multi_api_key = True
         self.api_key_queue = queue.Queue()
@@ -41,7 +43,7 @@ class State:
     def switching_api_key(self, func):
         if not hasattr(self, "api_key_queue"):
             return func
-        
+
         def wrapped(*args, **kwargs):
             api_key = self.api_key_queue.get()
             args = list(args)[1:]
@@ -50,6 +52,6 @@ class State:
             return ret
 
         return wrapped
-        
+
 
 state = State()

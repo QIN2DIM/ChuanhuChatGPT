@@ -1,12 +1,12 @@
+import logging
+import os
+import sys
 from collections import defaultdict
 from contextlib import contextmanager
-import os
-import logging
-import sys
+
 import commentjson as json
 
 from . import shared
-
 
 __all__ = [
     "my_api_key",
@@ -23,7 +23,7 @@ __all__ = [
 # 添加一个统一的config文件，避免文件过多造成的疑惑（优先级最低）
 # 同时，也可以为后续支持自定义功能提供config的帮助
 if os.path.exists("config.json"):
-    with open("config.json", "r", encoding='utf-8') as f:
+    with open("config.json", "r", encoding="utf-8") as f:
         config = json.load(f)
 else:
     config = {}
@@ -33,23 +33,23 @@ if os.path.exists("api_key.txt"):
     with open("api_key.txt", "r") as f:
         config["openai_api_key"] = f.read().strip()
     os.rename("api_key.txt", "api_key(deprecated).txt")
-    with open("config.json", "w", encoding='utf-8') as f:
+    with open("config.json", "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4)
 
 if os.path.exists("auth.json"):
     logging.info("检测到auth.json文件，正在进行迁移...")
     auth_list = []
-    with open("auth.json", "r", encoding='utf-8') as f:
-            auth = json.load(f)
-            for _ in auth:
-                if auth[_]["username"] and auth[_]["password"]:
-                    auth_list.append((auth[_]["username"], auth[_]["password"]))
-                else:
-                    logging.error("请检查auth.json文件中的用户名和密码！")
-                    sys.exit(1)
+    with open("auth.json", "r", encoding="utf-8") as f:
+        auth = json.load(f)
+        for _ in auth:
+            if auth[_]["username"] and auth[_]["password"]:
+                auth_list.append((auth[_]["username"], auth[_]["password"]))
+            else:
+                logging.error("请检查auth.json文件中的用户名和密码！")
+                sys.exit(1)
     config["users"] = auth_list
     os.rename("auth.json", "auth(deprecated).json")
-    with open("config.json", "w", encoding='utf-8') as f:
+    with open("config.json", "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4)
 
 ## 处理docker if we are running in Docker
@@ -58,11 +58,11 @@ if os.environ.get("dockerrun") == "yes":
     dockerflag = True
 
 ## 处理 api-key 以及 允许的用户列表
-my_api_key = config.get("openai_api_key", "") # 在这里输入你的 API 密钥
+my_api_key = config.get("openai_api_key", "")  # 在这里输入你的 API 密钥
 my_api_key = os.environ.get("my_api_key", my_api_key)
 
 ## 多账户机制
-multi_api_key = config.get("multi_api_key", False) # 是否开启多账户机制
+multi_api_key = config.get("multi_api_key", False)  # 是否开启多账户机制
 if multi_api_key:
     api_key_list = config.get("api_key_list", [])
     if len(api_key_list) == 0:
@@ -70,7 +70,7 @@ if multi_api_key:
         sys.exit(1)
     shared.state.set_api_key_queue(api_key_list)
 
-auth_list = config.get("users", []) # 实际上是使用者的列表
+auth_list = config.get("users", [])  # 实际上是使用者的列表
 authflag = len(auth_list) > 0  # 是否开启认证的状态值，改为判断auth_list长度
 
 # 处理自定义的api_host，优先读环境变量的配置，如果存在则自动装配
@@ -89,8 +89,9 @@ if dockerflag:
         auth_list.append((os.environ.get("USERNAME"), os.environ.get("PASSWORD")))
         authflag = True
 
+
 @contextmanager
-def retrieve_openai_api(api_key = None):
+def retrieve_openai_api(api_key=None):
     old_api_key = os.environ.get("OPENAI_API_KEY", "")
     if api_key is None:
         os.environ["OPENAI_API_KEY"] = my_api_key
@@ -100,11 +101,11 @@ def retrieve_openai_api(api_key = None):
         yield api_key
     os.environ["OPENAI_API_KEY"] = old_api_key
 
+
 ## 处理log
 log_level = config.get("log_level", "INFO")
 logging.basicConfig(
-    level=log_level,
-    format="%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s",
+    level=log_level, format="%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s"
 )
 
 ## 处理代理：
@@ -116,6 +117,7 @@ https_proxy = os.environ.get("HTTPS_PROXY", https_proxy)
 # 重置系统变量，在不需要设置的时候不设置环境变量，以免引起全局代理报错
 os.environ["HTTP_PROXY"] = ""
 os.environ["HTTPS_PROXY"] = ""
+
 
 @contextmanager
 def retrieve_proxy(proxy=None):
@@ -132,7 +134,7 @@ def retrieve_proxy(proxy=None):
         old_var = os.environ["HTTP_PROXY"], os.environ["HTTPS_PROXY"]
         os.environ["HTTP_PROXY"] = http_proxy
         os.environ["HTTPS_PROXY"] = https_proxy
-        yield http_proxy, https_proxy # return new proxy
+        yield http_proxy, https_proxy  # return new proxy
 
         # return old proxy
         os.environ["HTTP_PROXY"], os.environ["HTTPS_PROXY"] = old_var
@@ -141,6 +143,8 @@ def retrieve_proxy(proxy=None):
 ## 处理advance docs
 advance_docs = defaultdict(lambda: defaultdict(dict))
 advance_docs.update(config.get("advance_docs", {}))
+
+
 def update_doc_config(two_column_pdf):
     global advance_docs
     advance_docs["pdf"]["two_column"] = two_column_pdf
